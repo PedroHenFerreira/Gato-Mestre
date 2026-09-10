@@ -22,7 +22,7 @@ Ao final do processo, você terá um arquivo de saída com as previsões de pont
 - [5. Executando o projeto passo a passo](#5-executando-o-projeto-passo-a-passo)
 - [6. Onde encontrar o resultado](#6-onde-encontrar-o-resultado)
 - [Estrutura de pastas do projeto](#estrutura-de-pastas-do-projeto)
-- [Problemas comuns](#problemas-comuns)
+- [Questões para respostas](#questões-para-respostas)
 
 <br/>
 
@@ -62,8 +62,6 @@ uv --version
 ```
 
 Se aparecer um número de versão (ex: `uv 0.x.x`), está tudo certo.
-
-> Se o comando `uv` não for reconhecido, consulte a seção [Problemas comuns](#problemas-comuns).
 
 <br/>
 
@@ -214,4 +212,155 @@ Gato-Mestre/
 ├── README.md
 ├── pyproject.toml              # Dependências e metadados do projeto
 └── uv.lock                     # Versões travadas das dependências
+```
+
+<br/>
+
+## Questões para respostas
+
+1. Que inconsistências você encontrou na base? Para cada uma, qual foi o tratamento adotado e por quê?
+```
+Foram encontradas algumas inconsistências na base como um todo. Para cada caso, foi adotada a abordagem adequada:
+
+Colunas removidas por alto percentual de valores ausentes:
+- adversario_id
+- equipe_id
+- equipe_id_escalacoes
+- home_dummy
+- jogo_id_escalacoes
+- rodada_confrontos
+- titular
+- opponent # A coluna 'equipe_visitante_id' traz a mesma informação
+- temporada # A coluna 'ano' traz a mesma informação
+- edicao # Cerca de 5% de valores ausentes e coluna 'ano' traz a mesma informação
+- rodada # Cerca de 5% de valores ausentes
+- jogo_id # Cerca de 5% de valores ausentes
+- DD
+
+Colunas com valores ausentes droppados:
+# Ambas possuíam um pouco menos de 5% de valores ausentes.
+# Por ambas representarem informações importantes, os registros com essas colunas
+# com valores ausentes foram removidas.
+- 'equipe_mandante_id'
+- 'equipe_visitante_id'
+
+preco_num:
+Essa coluna possuía valores ausentes. Por se tratar do preço do jogador na rodada, ela foi preenchida com a média do jogador.
+
+minutos_jogados:
+Foram utilizadas duas condições para o preenchimento dos valores ausentes dessa coluna:
+- Se entrou_em_campo for verdadeiro, preenchido com 90;
+- Se entrou_em_campo for falso, preenchido com 0.
+
+status_inicial:
+Correção de valor. Existiam registros com o valor '0' (como string). Os registros com esse valor foram substituídos por 'reserva'
+
+momento_entrou:
+Valores ausentes foram convertidos para 0. A coluna foi convertida de string para int.
+
+momento_substituido:
+A coluna foi convertida de string para int. Foi criada uma coluna booleana chamada momento_substituido_ausencia (como valor padrão 0). O preenchimento dos valores ausentes foi feito nas seguintes condições:
+- Se entrou_em_campo for verdadeiro, preenchido com 90 e momento_substituido_ausencia recebeu o valor 1;
+- Se entrou_em_campo for falso, preenchido com 0 e momento_substituido_ausencia recebeu o valor 1.
+
+equipe_media_pontos_conquistados:
+Foi criada uma coluna booleana chamada equipe_media_pontos_conquistados_ausencia (como valor padrão 0). O preenchimento dos valores ausentes foi feito nas seguintes condições:
+- Se rodada_id for 1, preenchido com 0 e equipe_media_pontos_conquistados_ausencia recebeu o valor 0;
+- Se rodada_id for falso, preenchido com 0 e equipe_media_pontos_conquistados_ausencia recebeu o valor 1.
+
+adversario_media_pontos_cedidos:
+Foi criada uma coluna booleana chamada adversario_media_pontos_cedidos_ausencia (como valor padrão 0). O preenchimento dos valores ausentes foi feito nas seguintes condições:
+- Se rodada_id for 1, preenchido com 0 e adversario_media_pontos_cedidos_ausencia recebeu o valor 0;
+- Se rodada_id for falso, preenchido com 0 e adversario_media_pontos_cedidos_ausencia recebeu o valor 1.
+
+Colunas removidas por não terem relevância para o problema:
+- status_inicial
+- apelido
+
+status_pre:
+A coluna passou por uma limpeza na má formatação de seus valores e criação de dummies.
+
+Tratamento de duplicatas:
+- Linhas completamente duplicadas: removidas;
+- Linhas com as chaves 'atleta_id' e 'match_id' duplicadas: removidas.
+
+minutos_jogados:
+Essa coluna foi winsorizada com p02 e p98 como limite inferior e superior respectivamente.
+
+rodada_id:
+Foi criada uma coluna booleana chamada rodada_id_corrigido (como valor padrão 0). O preenchimento dos valores ausentes foi feito nas seguintes condições:
+- Se rodada_id for 0, preenchido com 1 e rodada_id_corrigido recebeu o valor 1;
+- Se rodada_id for maior que 38, preenchido com 38 e rodada_id_corrigido recebeu o valor 1.
+```
+
+<br/>
+
+2. Como você dividiu os dados entre treino e validação? Justifique tecnicamente o critério escolhido.
+```
+A divisão treino, validação e teste foi feita da seguinte forma:
+- Treino: As temporadas completas de 2022 a 2024;
+- Validação: A temporada 2025 da rodada 1 até 19;
+- Teste: A temporada 2025 da rodada 20 até 38.
+
+Essa escolha foi pensada priorizando 2 pontos muito importantes:
+I. Integridade temporal, evitando vazamentos de dados futuros para a divisão de treino;
+II. A realidade operacional do modelo. O objetivo é que o modelo preveja as pontuações dos jogadores durante o andamento da temporada.
+```
+
+<br/>
+
+3.  Quais  colunas  da  base  você  utilizou  como  variáveis  do  modelo,  e  quais  deixou  de  fora?  Explique  os  dois
+lados da decisão.
+```
+Além das colunas removidas na etapa de ETL (Questão 1), houve outras colunas que não foram utilizadas.
+
+Features sem relevância:
+- adversario_quantidade_titulares
+- adversario_quantidade_titulares_defensivos
+- adversario_quantidade_titulares_ofensivos
+- clube_quantidade_titulares
+- clube_quantidade_titulares_defensivos
+- clube_quantidade_titulares_ofensivos
+- equipe_mandante_id
+- match_id
+
+Features de vazamento:
+- eh_titular
+- eh_titular_defensivo
+- eh_titular_ofensivo
+- jogos_num
+- media_num
+- minutos_jogados
+- minutos_jogados_ausencia
+- momento_entrou
+- momento_entrou_ausencia
+- momento_substituido
+- momento_substituido_ausencia
+- preco_num
+- preco_num_variacao_ultima_1
+- status_inicial_nao_relacionado
+- status_inicial_reserva
+- variacao_num
+
+As demais colunas foram utilizadas como fetures. Devido à grande quantidade, não listarei aqui. Mas elas podem ser encontradas na base `base_gm_tratada.csv`.
+```
+
+<br/>
+
+4. Que métricas você usou para avaliar o modelo, e por quê? O resultado obtido justifica colocar a solução em uso?
+```
+As méttricas utilizadas foram RMSE, MAE e R2. A escolha foi baseada na avaliação por meio da compreensão da magnitude do erro do modelo e no score R2 de cobertura explicativa das features para com a target.
+
+O desemoenho do modelo no dataset de teste foi o seguinte:
+RMSE: 2.5634
+MAE: 1.4094
+R2: 0.3119
+
+O MAE mostra que o modelo erra relativamente pouco em termos de unidades de pontuação. O RMSE nos retorna que existem erros grosseiros, por parte do modelo, de predição em alguns casos.
+
+A maior preocupação é em relação ao R2_score. Ele mostra uma baixa cobertura explicativa dos dados. É um contexto esperado já que tratamos do cenários de desempenho esportivo, porém é um ponto de atenção.
+
+Por compromentimento com uma entrega de qualidade para o usuário final, não seguiria com essa versão do modelo. Porém não descartaria a possibilidade de implementação dessa feature.
+
+Vejo um grande potencial e gostaria de explorar a evolução do desempenho com mais features e outros modelos preditivos.
 ```
