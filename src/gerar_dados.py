@@ -7,7 +7,10 @@ from pathlib import Path
 
 def main():
     # Variáveis da api
-    config = tomllib.load(open("./.secrets/secrets.toml", "rb"))
+    # print("CWD:", Path.cwd())
+    # print(Path("./.secrets/secrets.toml"))
+    # print(Path("./.secrets/secrets.toml").exists())
+    config = tomllib.load(open(Path("./.secrets/secrets.toml"), "rb"))
     token = config["api"]["token"]
     endereco_api="http://localhost:8080"
     diretorio = "./src/api_outputs"
@@ -46,8 +49,13 @@ def main():
                 diretorio=diretorio + f"/jogos/{ano}"
             )
 
+            # try:
+            #     jogos.extend(resposta.dados)
+            # except AttributeError:
+            #     jogos.extend([])
             jogos.extend(resposta.dados)
             time.sleep(1)
+
 
     for i in tqdm(range(len(jogos)), desc="Realizando busca de escalação"):
         jogo_id = jogos[i]["jogo_id"]
